@@ -24,7 +24,7 @@ A powerful multi-tone audio generator and synthesizer built with React and the W
 - **Accessibility**: Generate test tones for hearing aids and audio calibration
 
 **GitHub**: https://github.com/pRizz/sound-shape-shifter-studio  
-**Live Demo**: https://lovable.dev/projects/16583ce2-fbb8-48ff-b99e-d40923bda31c
+**Live Demo**: https://sound-shape-shifter-studio.lovable.app/
 
 ## How can I edit this code?
 
