@@ -1,6 +1,27 @@
 # Sound Shape Shifter Studio
 
-Multi-tone audio generator and synthesizer built with React and Web Audio API.
+A powerful multi-tone audio generator and synthesizer built with React and the Web Audio API. Create complex soundscapes by layering multiple oscillators with different waveforms, frequencies, and volumes.
+
+## Features
+
+- **Multi-Tone Generation**: Create and layer multiple simultaneous audio tones
+- **Waveform Types**: Choose from sine, square, triangle, and sawtooth waves
+- **Real-Time Visualization**: Interactive waveform previews for each tone type
+- **Precise Frequency Control**: Manual frequency input (1-20,000 Hz) or musical note selection
+- **Individual Volume Control**: Adjust volume for each tone independently (0-100%)
+- **Mute/Unmute**: Toggle individual tones or pause/unpause all tones at once
+- **Musical Interface**: Quick frequency selection using musical notes across multiple octaves
+- **Responsive Design**: Beautiful, modern UI that works on desktop and mobile
+- **Real-Time Audio**: Low-latency audio generation using Web Audio API
+
+## Use Cases
+
+- **Sound Design**: Create ambient soundscapes and textures
+- **Music Production**: Generate reference tones and harmonics
+- **Audio Testing**: Test frequency response and audio equipment
+- **Educational**: Learn about waveforms, frequency, and audio synthesis
+- **Meditation**: Create calming drone sounds and binaural beats
+- **Accessibility**: Generate test tones for hearing aids and audio calibration
 
 **GitHub**: https://github.com/pRizz/sound-shape-shifter-studio  
 **Live Demo**: https://lovable.dev/projects/16583ce2-fbb8-48ff-b99e-d40923bda31c
