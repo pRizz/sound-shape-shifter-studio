@@ -42,7 +42,9 @@ export const WaveformPreview = ({ waveType, size = 40, isActive = false }: Wavef
     <svg 
       width={size} 
       height={size * 0.8}  // Updated to match new height ratio
+      viewBox={`0 0 ${size} ${size * 0.8}`}
       className={`transition-all duration-300 ${isActive ? 'opacity-100' : 'opacity-70'}`}
+      style={{ minWidth: size, minHeight: size * 0.8, flexShrink: 0 }}
     >
       <path
         d={path}

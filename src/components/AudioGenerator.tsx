@@ -271,11 +271,13 @@ export const AudioGenerator = () => {
                     variant={waveType === type ? "default" : "secondary"}
                     onClick={() => setWaveType(type)}
                     className={`h-28 flex flex-col items-center justify-center gap-2 bg-gradient-control hover:bg-gradient-active transition-all duration-300 ${
-                      waveType === type ? 'shadow-glow border-primary' : 'border-border/30'
+                      waveType === type ? 'shadow-glow border-primary text-primary-foreground' : 'border-border/30'
                     }`}
                   >
-                    <WaveformPreview waveType={type} size={60} isActive={waveType === type} />
-                    <span className="text-sm font-medium capitalize">{type}</span>
+                    <div className="flex items-center justify-center">
+                      <WaveformPreview waveType={type} size={40} isActive={waveType === type} />
+                    </div>
+                    <span className="text-xl font-bold capitalize text-foreground">{type}</span>
                   </Button>
                 ))}
               </div>
