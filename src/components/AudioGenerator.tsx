@@ -458,7 +458,7 @@ export const AudioGenerator = () => {
                 {activeTones.map((tone) => (
                   <div
                     key={tone.id}
-                    className={`flex items-center gap-4 p-4 rounded-lg bg-audio-control border transition-all duration-300 ${
+                    className={`p-4 rounded-lg bg-audio-control border transition-all duration-300 ${
                       tone.isEnabled 
                         ? isAllPaused 
                           ? 'border-orange-500/30 shadow-control opacity-80' 
@@ -466,78 +466,82 @@ export const AudioGenerator = () => {
                         : 'border-border/30 opacity-60'
                     }`}
                   >
-                    {/* Waveform Preview */}
-                    <div className="flex-shrink-0">
-                      <WaveformPreview 
-                        waveType={tone.waveType} 
-                        size={40} 
-                        isActive={tone.isEnabled && !isAllPaused} 
-                      />
-                    </div>
+                    {/* Mobile-friendly layout with flex wrap */}
+                    <div className="flex flex-wrap items-center gap-4">
+                      {/* Waveform Preview and Tone Info */}
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="flex-shrink-0">
+                          <WaveformPreview 
+                            waveType={tone.waveType} 
+                            size={40} 
+                            isActive={tone.isEnabled && !isAllPaused} 
+                          />
+                        </div>
 
-                    {/* Tone Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-mono text-sm font-medium text-foreground">
-                          {tone.frequency}Hz
-                        </span>
-                        <Badge variant="outline" className="text-xs capitalize">
-                          {tone.waveType}
-                        </Badge>
-                        <span className={`text-xs ${tone.isEnabled ? (isAllPaused ? 'text-orange-500' : 'text-neon-green') : 'text-muted-foreground'}`}>
-                          {tone.isEnabled ? (isAllPaused ? 'Paused' : 'Playing') : 'Muted'}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <span className="font-mono text-sm font-medium text-foreground whitespace-nowrap">
+                              {tone.frequency}Hz
+                            </span>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {tone.waveType}
+                            </Badge>
+                            <span className={`text-xs whitespace-nowrap ${tone.isEnabled ? (isAllPaused ? 'text-orange-500' : 'text-neon-green') : 'text-muted-foreground'}`}>
+                              {tone.isEnabled ? (isAllPaused ? 'Paused' : 'Playing') : 'Muted'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Volume Control - takes remaining space, wraps on mobile */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1 min-w-[200px]">
+                        <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <Slider
+                          value={[tone.volume]}
+                          onValueChange={(value) => updateToneVolume(tone.id, value[0])}
+                          max={100}
+                          step={1}
+                          className="flex-1"
+                        />
+                        <span className="text-xs font-mono text-muted-foreground w-8 text-right flex-shrink-0">
+                          {tone.volume}%
                         </span>
                       </div>
-                    </div>
 
-                    {/* Volume Control */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <Slider
-                        value={[tone.volume]}
-                        onValueChange={(value) => updateToneVolume(tone.id, value[0])}
-                        max={100}
-                        step={1}
-                        className="flex-1"
-                      />
-                      <span className="text-xs font-mono text-muted-foreground w-8 text-right">
-                        {tone.volume}%
-                      </span>
-                    </div>
-
-                    {/* Controls */}
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log('Toggling tone:', tone.id, 'currently enabled:', tone.isEnabled);
-                          toggleTone(tone.id);
-                        }}
-                        className="h-8 w-8 p-0"
-                      >
-                        {tone.isEnabled ? (
-                          <Eye className="h-4 w-4 text-neon-green" />
-                        ) : (
-                          <EyeOff className="h-4 w-4 text-muted-foreground" />
-                        )}
-                      </Button>
-                      
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          console.log('Removing tone:', tone.id);
-                          removeTone(tone.id);
-                        }}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      {/* Controls */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Toggling tone:', tone.id, 'currently enabled:', tone.isEnabled);
+                            toggleTone(tone.id);
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          {tone.isEnabled ? (
+                            <Eye className="h-4 w-4 text-neon-green" />
+                          ) : (
+                            <EyeOff className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </Button>
+                        
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Removing tone:', tone.id);
+                            removeTone(tone.id);
+                          }}
+                          className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
