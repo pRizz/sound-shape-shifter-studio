@@ -297,6 +297,16 @@ export const AudioGenerator = () => {
                   <Plus className="h-5 w-5 mr-2" />
                   Add Tone
                 </Button>
+
+                {/* Tone Preview */}
+                <div className="text-center p-3 bg-audio-control/50 rounded-lg border border-border/30">
+                  <p className="text-xs text-muted-foreground mb-1">Next tone will be:</p>
+                  <p className="font-mono text-sm text-foreground">
+                    <span className="text-primary font-medium">{frequency}Hz</span> • {" "}
+                    <span className="text-accent capitalize">{waveType}</span> • {" "}
+                    <span className="text-neon-green">{volume[0]}%</span>
+                  </p>
+                </div>
               </div>
             </div>
 
