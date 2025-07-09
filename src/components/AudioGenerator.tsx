@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Square, Volume2 } from 'lucide-react';
+import { Play, Square, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
+import { Slider } from '@/components/ui/slider';
 import { WaveformPreview } from './WaveformPreview';
 import { toast } from '@/hooks/use-toast';
 
@@ -36,6 +37,7 @@ export const AudioGenerator = () => {
   const [frequency, setFrequency] = useState(440);
   const [waveType, setWaveType] = useState<WaveType>('sine');
   const [selectedOctave, setSelectedOctave] = useState(4);
+  const [volume, setVolume] = useState([50]); // Volume as percentage (0-100)
   
   const audioContextRef = useRef<AudioContext | null>(null);
   const oscillatorRef = useRef<OscillatorNode | null>(null);
@@ -62,8 +64,10 @@ export const AudioGenerator = () => {
       oscillator.type = waveType;
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       
+      // Convert volume percentage to gain (0-1 range)
+      const gainValue = (volume[0] / 100) * 0.3; // Max gain of 0.3 for safety
       gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.01);
+      gainNode.gain.linearRampToValueAtTime(gainValue, audioContext.currentTime + 0.01);
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
@@ -76,7 +80,7 @@ export const AudioGenerator = () => {
 
       toast({
         title: "Audio Started",
-        description: `Playing ${waveType} wave at ${frequency}Hz`,
+        description: `Playing ${waveType} wave at ${frequency}Hz (${volume[0]}% volume)`,
       });
     } catch (error) {
       console.error('Error starting audio:', error);
@@ -86,7 +90,7 @@ export const AudioGenerator = () => {
         variant: "destructive",
       });
     }
-  }, [frequency, waveType, initAudioContext]);
+  }, [frequency, waveType, volume, initAudioContext]);
 
   const stopTone = useCallback(() => {
     if (oscillatorRef.current && gainNodeRef.current) {
@@ -108,6 +112,13 @@ export const AudioGenerator = () => {
       title: "Audio Stopped",
       description: "Tone generation stopped",
     });
+  }, []);
+
+  const updateVolume = useCallback((newVolume: number[]) => {
+    if (gainNodeRef.current && audioContextRef.current) {
+      const gainValue = (newVolume[0] / 100) * 0.3; // Max gain of 0.3 for safety
+      gainNodeRef.current.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+    }
   }, []);
 
   const updateFrequency = useCallback((newFrequency: number) => {
@@ -183,18 +194,18 @@ export const AudioGenerator = () => {
                 <Volume2 className="h-5 w-5 text-primary" />
                 Waveform Type
               </h3>
-              
+               
               <div className="grid grid-cols-2 gap-3">
                 {(['sine', 'square', 'triangle', 'sawtooth'] as WaveType[]).map((type) => (
                   <Button
                     key={type}
                     variant={waveType === type ? "default" : "secondary"}
                     onClick={() => handleWaveTypeChange(type)}
-                    className={`h-20 flex flex-col items-center justify-center gap-2 bg-gradient-control hover:bg-gradient-active transition-all duration-300 ${
+                    className={`h-28 flex flex-col items-center justify-center gap-2 bg-gradient-control hover:bg-gradient-active transition-all duration-300 ${
                       waveType === type ? 'shadow-glow border-primary' : 'border-border/30'
                     }`}
                   >
-                    <WaveformPreview waveType={type} isActive={waveType === type} />
+                    <WaveformPreview waveType={type} size={60} isActive={waveType === type} />
                     <span className="text-sm font-medium capitalize">{type}</span>
                   </Button>
                 ))}
@@ -244,6 +255,30 @@ export const AudioGenerator = () => {
                       </>
                     )}
                   </Button>
+                </div>
+
+                {/* Volume Control */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    {volume[0] === 0 ? (
+                      <VolumeX className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Volume2 className="h-4 w-4 text-primary" />
+                    )}
+                    <span className="text-sm font-medium text-muted-foreground">Volume</span>
+                    <span className="text-sm font-mono text-primary ml-auto">{volume[0]}%</span>
+                  </div>
+                  
+                  <Slider
+                    value={volume}
+                    onValueChange={(newValue) => {
+                      setVolume(newValue);
+                      updateVolume(newValue);
+                    }}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
                 </div>
               </div>
             </div>
