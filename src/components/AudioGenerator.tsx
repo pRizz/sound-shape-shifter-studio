@@ -413,7 +413,12 @@ export const AudioGenerator = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => toggleTone(tone.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('Toggling tone:', tone.id, 'currently enabled:', tone.isEnabled);
+                          toggleTone(tone.id);
+                        }}
                         className="h-8 w-8 p-0"
                       >
                         {tone.isEnabled ? (
@@ -426,7 +431,12 @@ export const AudioGenerator = () => {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => removeTone(tone.id)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          console.log('Removing tone:', tone.id);
+                          removeTone(tone.id);
+                        }}
                         className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       >
                         <Trash2 className="h-4 w-4" />
