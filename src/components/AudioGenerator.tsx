@@ -182,17 +182,35 @@ export const AudioGenerator = () => {
   }, [updateToneVolume]);
 
   const originalUpdateToneVolume = useCallback((toneId: string, newVolume: number) => {
+    console.log('originalUpdateToneVolume called:', { toneId, newVolume });
+    
     setActiveTones(prev => prev.map(tone => {
       if (tone.id === toneId) {
+        console.log('Updating tone volume:', { 
+          id: tone.id, 
+          isEnabled: tone.isEnabled, 
+          oldVolume: tone.volume, 
+          newVolume 
+        });
+        
         if (audioContextRef.current && tone.gainNode) {
+          // Only apply the volume change if the tone is currently enabled (not muted)
           const gainValue = tone.isEnabled ? (newVolume / 100) * 0.2 : 0;
+          console.log('Setting gain value:', gainValue);
+          
           try {
             tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+            console.log('Gain applied successfully');
           } catch (error) {
             console.error('Error updating tone volume:', error);
           }
         }
-        return { ...tone, volume: newVolume, actualVolume: tone.isEnabled ? newVolume : 0 };
+        
+        // Update the user's volume setting and actual volume based on enabled state
+        const newActualVolume = tone.isEnabled ? newVolume : 0;
+        console.log('New state:', { volume: newVolume, actualVolume: newActualVolume });
+        
+        return { ...tone, volume: newVolume, actualVolume: newActualVolume };
       }
       return tone;
     }));
