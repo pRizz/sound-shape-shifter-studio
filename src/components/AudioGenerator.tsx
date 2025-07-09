@@ -20,7 +20,8 @@ interface ActiveTone {
   id: string;
   frequency: number;
   waveType: WaveType;
-  volume: number;
+  volume: number; // The user-set volume level (preserved when muted)
+  actualVolume: number; // The actual volume being played (0 when muted)
   isEnabled: boolean;
   oscillator: OscillatorNode;
   gainNode: GainNode;
@@ -91,7 +92,8 @@ export const AudioGenerator = () => {
         id: generateToneId(),
         frequency,
         waveType,
-        volume: volume[0],
+        volume: volume[0], // User-set volume (preserved when muted)
+        actualVolume: volume[0], // Current playing volume (0 when muted)
         isEnabled: true,
         oscillator,
         gainNode,
@@ -138,6 +140,23 @@ export const AudioGenerator = () => {
     });
   }, []);
 
+  const updateToneVolume = useCallback((toneId: string, newVolume: number) => {
+    setActiveTones(prev => prev.map(tone => {
+      if (tone.id === toneId) {
+        if (audioContextRef.current && tone.gainNode) {
+          const gainValue = (newVolume / 100) * 0.2;
+          try {
+            tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+          } catch (error) {
+            console.error('Error updating tone volume:', error);
+          }
+        }
+        return { ...tone, actualVolume: newVolume };
+      }
+      return tone;
+    }));
+  }, []);
+
   const toggleTone = useCallback((toneId: string) => {
     console.log('toggleTone called for:', toneId);
     
@@ -146,36 +165,23 @@ export const AudioGenerator = () => {
         const newEnabled = !tone.isEnabled;
         console.log(`Toggling tone ${toneId} from ${tone.isEnabled} to ${newEnabled}`);
         
-        if (audioContextRef.current && tone.gainNode && tone.oscillator) {
-          console.log('Audio context state:', audioContextRef.current.state);
-          console.log('Oscillator state:', tone.oscillator.context.state);
-          
-          const gainValue = newEnabled ? (tone.volume / 100) * 0.2 : 0;
-          console.log('Setting gain to:', gainValue);
-          
-          try {
-            const currentTime = audioContextRef.current.currentTime;
-            console.log('Current time:', currentTime);
-            
-            // Cancel any scheduled changes first
-            tone.gainNode.gain.cancelScheduledValues(currentTime);
-            tone.gainNode.gain.setValueAtTime(tone.gainNode.gain.value, currentTime);
-            tone.gainNode.gain.linearRampToValueAtTime(gainValue, currentTime + 0.1);
-            
-            console.log('Gain value set successfully');
-          } catch (error) {
-            console.error('Error toggling tone:', error);
-          }
+        if (newEnabled) {
+          // Unmuting: restore the user's volume setting
+          console.log('Unmuting - restoring volume to:', tone.volume);
+          updateToneVolume(toneId, tone.volume);
+          return { ...tone, isEnabled: true, actualVolume: tone.volume };
         } else {
-          console.error('Missing audio context, gain node, or oscillator');
+          // Muting: set actual volume to 0, but keep user's volume setting
+          console.log('Muting - setting actual volume to 0, preserving volume:', tone.volume);
+          updateToneVolume(toneId, 0);
+          return { ...tone, isEnabled: false, actualVolume: 0 };
         }
-        return { ...tone, isEnabled: newEnabled };
       }
       return tone;
     }));
-  }, []);
+  }, [updateToneVolume]);
 
-  const updateToneVolume = useCallback((toneId: string, newVolume: number) => {
+  const originalUpdateToneVolume = useCallback((toneId: string, newVolume: number) => {
     setActiveTones(prev => prev.map(tone => {
       if (tone.id === toneId) {
         if (audioContextRef.current && tone.gainNode) {
@@ -186,7 +192,7 @@ export const AudioGenerator = () => {
             console.error('Error updating tone volume:', error);
           }
         }
-        return { ...tone, volume: newVolume };
+        return { ...tone, volume: newVolume, actualVolume: tone.isEnabled ? newVolume : 0 };
       }
       return tone;
     }));
@@ -417,7 +423,7 @@ export const AudioGenerator = () => {
                       <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <Slider
                         value={[tone.volume]}
-                        onValueChange={(value) => updateToneVolume(tone.id, value[0])}
+                        onValueChange={(value) => originalUpdateToneVolume(tone.id, value[0])}
                         max={100}
                         step={1}
                         className="flex-1"
