@@ -365,8 +365,8 @@ export const AudioGenerator = () => {
                   className="w-full"
                   disabled={activeTones.length === 0}
                 >
-                  <Square className="h-5 w-5 mr-2" />
-                  Stop All Tones
+                  <Trash2 className="h-5 w-5 mr-2" />
+                  Delete All Tones
                 </Button>
 
                 <div className="text-xs text-muted-foreground text-center">
