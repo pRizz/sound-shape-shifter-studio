@@ -139,16 +139,35 @@ export const AudioGenerator = () => {
   }, []);
 
   const toggleTone = useCallback((toneId: string) => {
+    console.log('toggleTone called for:', toneId);
+    
     setActiveTones(prev => prev.map(tone => {
       if (tone.id === toneId) {
         const newEnabled = !tone.isEnabled;
-        if (audioContextRef.current && tone.gainNode) {
+        console.log(`Toggling tone ${toneId} from ${tone.isEnabled} to ${newEnabled}`);
+        
+        if (audioContextRef.current && tone.gainNode && tone.oscillator) {
+          console.log('Audio context state:', audioContextRef.current.state);
+          console.log('Oscillator state:', tone.oscillator.context.state);
+          
           const gainValue = newEnabled ? (tone.volume / 100) * 0.2 : 0;
+          console.log('Setting gain to:', gainValue);
+          
           try {
-            tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+            const currentTime = audioContextRef.current.currentTime;
+            console.log('Current time:', currentTime);
+            
+            // Cancel any scheduled changes first
+            tone.gainNode.gain.cancelScheduledValues(currentTime);
+            tone.gainNode.gain.setValueAtTime(tone.gainNode.gain.value, currentTime);
+            tone.gainNode.gain.linearRampToValueAtTime(gainValue, currentTime + 0.1);
+            
+            console.log('Gain value set successfully');
           } catch (error) {
             console.error('Error toggling tone:', error);
           }
+        } else {
+          console.error('Missing audio context, gain node, or oscillator');
         }
         return { ...tone, isEnabled: newEnabled };
       }
