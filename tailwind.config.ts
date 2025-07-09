@@ -61,7 +61,34 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				audio: {
+					panel: 'hsl(var(--audio-panel))',
+					control: 'hsl(var(--audio-control))',
+					active: 'hsl(var(--audio-active))',
+					glow: 'hsl(var(--audio-glow))'
+				},
+				neon: {
+					blue: 'hsl(var(--neon-blue))',
+					green: 'hsl(var(--neon-green))'
+				},
+				waveform: {
+					line: 'hsl(var(--waveform-line))'
 				}
+			},
+			backgroundImage: {
+				'gradient-panel': 'var(--gradient-panel)',
+				'gradient-control': 'var(--gradient-control)',
+				'gradient-active': 'var(--gradient-active)'
+			},
+			boxShadow: {
+				'panel': 'var(--shadow-panel)',
+				'control': 'var(--shadow-control)',
+				'glow': 'var(--shadow-glow)'
+			},
+			transitionTimingFunction: {
+				'smooth': 'var(--transition-smooth)',
+				'bounce': 'var(--transition-bounce)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
