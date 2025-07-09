@@ -10,6 +10,8 @@ import { toast } from '@/hooks/use-toast';
 
 type WaveType = 'sine' | 'square' | 'triangle' | 'sawtooth';
 
+const maxGain = 0.2;
+
 interface Note {
   name: string;
   frequency: number;
@@ -53,10 +55,13 @@ export const AudioGenerator = () => {
   
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  const initAudioContext = useCallback(() => {
+  // Lazy load the audio context
+  const getAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
+      console.log('Making new audio context');
       audioContextRef.current = new AudioContext();
     }
+    console.log('Reusing audio context');
     return audioContextRef.current;
   }, []);
 
@@ -66,7 +71,7 @@ export const AudioGenerator = () => {
     try {
       console.log('Adding tone with settings:', { frequency, waveType, volume: volume[0] });
       
-      const audioContext = initAudioContext();
+      const audioContext = getAudioContext();
       console.log('Audio context state:', audioContext.state);
       
       const oscillator = audioContext.createOscillator();
@@ -75,7 +80,7 @@ export const AudioGenerator = () => {
       oscillator.type = waveType;
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       
-      const gainValue = (volume[0] / 100) * 0.2; // Lower max gain for multiple tones
+      const gainValue = (volume[0] / 100) * maxGain; // Lower max gain for multiple tones
       console.log('Setting gain value:', gainValue);
       
       gainNode.gain.setValueAtTime(0, audioContext.currentTime);
@@ -117,7 +122,7 @@ export const AudioGenerator = () => {
         variant: "destructive",
       });
     }
-  }, [frequency, waveType, volume, initAudioContext]);
+  }, [frequency, waveType, volume, getAudioContext]);
 
   const removeTone = useCallback((toneId: string) => {
     setActiveTones(prev => {
@@ -140,14 +145,14 @@ export const AudioGenerator = () => {
 
   const updateToneVolume = useCallback((toneId: string, newVolume: number) => {
     console.log('updateToneVolume called:', { toneId, newVolume });
-    
+
     setActiveTones(prev => prev.map(tone => {
       if (tone.id === toneId) {
         console.log('Found tone to update:', tone.id, 'enabled:', tone.isEnabled);
         
         if (audioContextRef.current && tone.gainNode) {
           // Calculate gain based on both volume and enabled state
-          const gainValue = tone.isEnabled ? (newVolume / 100) * 0.2 : 0;
+          const gainValue = tone.isEnabled ? (newVolume / 100) * maxGain : 0;
           console.log('Applying gain:', gainValue);
           
           try {
@@ -160,7 +165,7 @@ export const AudioGenerator = () => {
         
         return { ...tone, volume: newVolume };
       }
-      return tone;
+        return tone;
     }));
   }, []);
 
@@ -174,7 +179,7 @@ export const AudioGenerator = () => {
         
         if (audioContextRef.current && tone.gainNode) {
           // Use current volume but apply enabled/disabled state
-          const gainValue = newEnabled ? (tone.volume / 100) * 0.2 : 0;
+          const gainValue = newEnabled ? (tone.volume / 100) * maxGain : 0;
           console.log('Setting gain to:', gainValue);
           
           try {
@@ -219,24 +224,22 @@ export const AudioGenerator = () => {
   };
 
   useEffect(() => {
+    console.log('useEffect');
     return () => {
+      console.log('useEffect cleanup');
       activeTones.forEach(tone => {
         tone.oscillator.stop();
       });
+      console.log('audioContextRef.current', audioContextRef.current);
       if (audioContextRef.current) {
+        console.log('closing audio context');
         audioContextRef.current.close();
       }
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      activeTones.forEach(tone => {
-        tone.oscillator.stop();
-      });
-    };
-  }, [activeTones]);
-
+  console.log('activeTones', activeTones);
+  
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto space-y-8">
