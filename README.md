@@ -1,8 +1,9 @@
-# Welcome to your Lovable project
+# Sound Shape Shifter Studio
 
-## Project info
+Multi-tone audio generator and synthesizer built with React and Web Audio API.
 
-**URL**: https://lovable.dev/projects/16583ce2-fbb8-48ff-b99e-d40923bda31c
+**GitHub**: https://github.com/pRizz/sound-shape-shifter-studio  
+**Live Demo**: https://lovable.dev/projects/16583ce2-fbb8-48ff-b99e-d40923bda31c
 
 ## How can I edit this code?
 

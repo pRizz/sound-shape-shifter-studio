@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Square, Volume2, VolumeX, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Play, Square, Volume2, VolumeX, Plus, Trash2, Eye, EyeOff, Github } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -280,9 +280,19 @@ export const AudioGenerator = () => {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold bg-gradient-active bg-clip-text text-transparent">
-            Multi-Tone Audio Generator
-          </h1>
+          <div className="flex items-center justify-center gap-4 mb-4">
+            <h1 className="text-4xl font-bold bg-gradient-active bg-clip-text text-transparent">
+              Multi-Tone Audio Generator
+            </h1>
+            <a
+              href="https://github.com/pRizz/sound-shape-shifter-studio"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Github className="h-6 w-6" />
+            </a>
+          </div>
           <p className="text-muted-foreground">
             Audio synthesizer with multiple simultaneous tones
           </p>
@@ -583,6 +593,30 @@ export const AudioGenerator = () => {
             </div>
           </div>
         </Card>
+
+        {/* Footer */}
+        <footer className="text-center text-sm text-muted-foreground py-8">
+          <p>
+            Free and open source software vibe coded by{' '}
+            <a 
+              href="https://github.com/pRizz" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Peter Ryszkiewicz
+            </a>{' '}
+            and{' '}
+            <a 
+              href="https://lovable.dev" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              lovable.dev
+            </a>
+          </p>
+        </footer>
       </div>
     </div>
   );
