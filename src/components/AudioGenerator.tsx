@@ -52,6 +52,7 @@ export const AudioGenerator = () => {
   const [selectedOctave, setSelectedOctave] = useState(4);
   const [volume, setVolume] = useState([50]);
   const [activeTones, setActiveTones] = useState<ActiveTone[]>([]);
+  const [isAllPaused, setIsAllPaused] = useState(false);
   
   const audioContextRef = useRef<AudioContext | null>(null);
 
@@ -151,8 +152,8 @@ export const AudioGenerator = () => {
         console.log('Found tone to update:', tone.id, 'enabled:', tone.isEnabled);
         
         if (audioContextRef.current && tone.gainNode) {
-          // Calculate gain based on both volume and enabled state
-          const gainValue = tone.isEnabled ? (newVolume / 100) * maxGain : 0;
+          // Calculate gain based on volume, enabled state, and global pause state
+          const gainValue = (!isAllPaused && tone.isEnabled) ? (newVolume / 100) * maxGain : 0;
           console.log('Applying gain:', gainValue);
           
           try {
@@ -167,7 +168,7 @@ export const AudioGenerator = () => {
       }
         return tone;
     }));
-  }, []);
+  }, [isAllPaused]);
 
   const toggleTone = useCallback((toneId: string) => {
     console.log('toggleTone called for:', toneId);
@@ -178,8 +179,8 @@ export const AudioGenerator = () => {
         console.log(`Toggling tone ${toneId} from ${tone.isEnabled} to ${newEnabled}`);
         
         if (audioContextRef.current && tone.gainNode) {
-          // Use current volume but apply enabled/disabled state
-          const gainValue = newEnabled ? (tone.volume / 100) * maxGain : 0;
+          // Use current volume but apply enabled/disabled state, but only if not globally paused
+          const gainValue = (!isAllPaused && newEnabled) ? (tone.volume / 100) * maxGain : 0;
           console.log('Setting gain to:', gainValue);
           
           try {
@@ -194,6 +195,39 @@ export const AudioGenerator = () => {
       }
       return tone;
     }));
+  }, [isAllPaused]);
+
+  const pauseAllTones = useCallback(() => {
+    setActiveTones(prev => prev.map(tone => {
+      if (audioContextRef.current && tone.gainNode) {
+        // Mute all tones by setting gain to 0, but preserve their enabled state
+        tone.gainNode.gain.linearRampToValueAtTime(0, audioContextRef.current.currentTime + 0.1);
+      }
+      return tone; // Don't change isEnabled state
+    }));
+    setIsAllPaused(true);
+
+    toast({
+      title: "All Tones Paused",
+      description: "All active tones have been paused",
+    });
+  }, []);
+
+  const unpauseAllTones = useCallback(() => {
+    setActiveTones(prev => prev.map(tone => {
+      if (audioContextRef.current && tone.gainNode) {
+        // Restore each tone's volume based on its enabled state and volume level
+        const gainValue = tone.isEnabled ? (tone.volume / 100) * maxGain : 0;
+        tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+      }
+      return tone; // Don't change isEnabled state
+    }));
+    setIsAllPaused(false);
+
+    toast({
+      title: "All Tones Unpaused",
+      description: "All active tones have been resumed",
+    });
   }, []);
 
   const stopAllTones = useCallback(() => {
@@ -204,6 +238,7 @@ export const AudioGenerator = () => {
       }, 20);
     });
     setActiveTones([]);
+    setIsAllPaused(false);
 
     toast({
       title: "All Tones Stopped",
@@ -249,7 +284,7 @@ export const AudioGenerator = () => {
             Multi-Tone Audio Generator
           </h1>
           <p className="text-muted-foreground">
-            Professional synthesizer with multiple simultaneous tones
+            Audio synthesizer with multiple simultaneous tones
           </p>
         </div>
 
@@ -361,6 +396,21 @@ export const AudioGenerator = () => {
                 </div>
 
                 <Button
+                  onClick={isAllPaused ? unpauseAllTones : pauseAllTones}
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  disabled={activeTones.length === 0}
+                >
+                  {isAllPaused ? (
+                    <Play className="h-5 w-5 mr-2" />
+                  ) : (
+                    <Square className="h-5 w-5 mr-2" />
+                  )}
+                  {isAllPaused ? 'Unpause All Tones' : 'Pause All Tones'}
+                </Button>
+
+                <Button
                   onClick={stopAllTones}
                   variant="destructive"
                   size="lg"
@@ -370,10 +420,7 @@ export const AudioGenerator = () => {
                   <Trash2 className="h-5 w-5 mr-2" />
                   Delete All Tones
                 </Button>
-
-                <div className="text-xs text-muted-foreground text-center">
-                  Current: {frequency}Hz {waveType} @ {volume[0]}%
-                </div>
+                
               </div>
             </div>
           </div>
@@ -384,8 +431,17 @@ export const AudioGenerator = () => {
           <Card className="bg-gradient-panel border-border/50 shadow-panel p-8">
             <div className="space-y-6">
               <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <Play className="h-5 w-5 text-neon-green" />
+                {isAllPaused ? (
+                  <Square className="h-5 w-5 text-orange-500" />
+                ) : (
+                  <Play className="h-5 w-5 text-neon-green" />
+                )}
                 Active Tones ({activeTones.length})
+                {isAllPaused && (
+                  <Badge variant="outline" className="ml-2 text-orange-500 border-orange-500/30">
+                    Paused
+                  </Badge>
+                )}
               </h3>
               
               <div className="grid gap-4">
@@ -393,12 +449,20 @@ export const AudioGenerator = () => {
                   <div
                     key={tone.id}
                     className={`flex items-center gap-4 p-4 rounded-lg bg-audio-control border transition-all duration-300 ${
-                      tone.isEnabled ? 'border-primary/30 shadow-control' : 'border-border/30 opacity-60'
+                      tone.isEnabled 
+                        ? isAllPaused 
+                          ? 'border-orange-500/30 shadow-control opacity-80' 
+                          : 'border-primary/30 shadow-control' 
+                        : 'border-border/30 opacity-60'
                     }`}
                   >
                     {/* Waveform Preview */}
                     <div className="flex-shrink-0">
-                      <WaveformPreview waveType={tone.waveType} size={40} isActive={tone.isEnabled} />
+                      <WaveformPreview 
+                        waveType={tone.waveType} 
+                        size={40} 
+                        isActive={tone.isEnabled && !isAllPaused} 
+                      />
                     </div>
 
                     {/* Tone Info */}
@@ -410,8 +474,8 @@ export const AudioGenerator = () => {
                         <Badge variant="outline" className="text-xs capitalize">
                           {tone.waveType}
                         </Badge>
-                        <span className={`text-xs ${tone.isEnabled ? 'text-neon-green' : 'text-muted-foreground'}`}>
-                          {tone.isEnabled ? 'Playing' : 'Muted'}
+                        <span className={`text-xs ${tone.isEnabled ? (isAllPaused ? 'text-orange-500' : 'text-neon-green') : 'text-muted-foreground'}`}>
+                          {tone.isEnabled ? (isAllPaused ? 'Paused' : 'Playing') : 'Muted'}
                         </span>
                       </div>
                     </div>
