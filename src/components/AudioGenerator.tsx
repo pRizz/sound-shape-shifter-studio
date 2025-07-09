@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
-import { Play, Square, Volume2, VolumeX } from 'lucide-react';
+import { Play, Square, Volume2, VolumeX, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import { WaveformPreview } from './WaveformPreview';
 import { toast } from '@/hooks/use-toast';
 
@@ -13,6 +14,17 @@ interface Note {
   name: string;
   frequency: number;
   isSharp?: boolean;
+}
+
+interface ActiveTone {
+  id: string;
+  frequency: number;
+  waveType: WaveType;
+  volume: number;
+  isEnabled: boolean;
+  oscillator: OscillatorNode;
+  gainNode: GainNode;
+  createdAt: Date;
 }
 
 const notes: Note[] = [
@@ -33,15 +45,13 @@ const notes: Note[] = [
 const octaves = [3, 4, 5, 6, 7];
 
 export const AudioGenerator = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
   const [frequency, setFrequency] = useState(440);
   const [waveType, setWaveType] = useState<WaveType>('sine');
   const [selectedOctave, setSelectedOctave] = useState(4);
-  const [volume, setVolume] = useState([50]); // Volume as percentage (0-100)
+  const [volume, setVolume] = useState([50]);
+  const [activeTones, setActiveTones] = useState<ActiveTone[]>([]);
   
   const audioContextRef = useRef<AudioContext | null>(null);
-  const oscillatorRef = useRef<OscillatorNode | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
 
   const initAudioContext = useCallback(() => {
     if (!audioContextRef.current) {
@@ -50,113 +60,126 @@ export const AudioGenerator = () => {
     return audioContextRef.current;
   }, []);
 
-  const startTone = useCallback(() => {
+  const generateToneId = () => `tone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  const addTone = useCallback(() => {
     try {
       const audioContext = initAudioContext();
-      
-      if (oscillatorRef.current) {
-        oscillatorRef.current.stop();
-      }
-
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
       oscillator.type = waveType;
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       
-      // Convert volume percentage to gain (0-1 range)
-      const gainValue = (volume[0] / 100) * 0.3; // Max gain of 0.3 for safety
+      const gainValue = (volume[0] / 100) * 0.2; // Lower max gain for multiple tones
       gainNode.gain.setValueAtTime(0, audioContext.currentTime);
       gainNode.gain.linearRampToValueAtTime(gainValue, audioContext.currentTime + 0.01);
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
-
       oscillator.start();
-      
-      oscillatorRef.current = oscillator;
-      gainNodeRef.current = gainNode;
-      setIsPlaying(true);
+
+      const newTone: ActiveTone = {
+        id: generateToneId(),
+        frequency,
+        waveType,
+        volume: volume[0],
+        isEnabled: true,
+        oscillator,
+        gainNode,
+        createdAt: new Date(),
+      };
+
+      setActiveTones(prev => [...prev, newTone]);
 
       toast({
-        title: "Audio Started",
-        description: `Playing ${waveType} wave at ${frequency}Hz (${volume[0]}% volume)`,
+        title: "Tone Added",
+        description: `Added ${waveType} wave at ${frequency}Hz`,
       });
     } catch (error) {
-      console.error('Error starting audio:', error);
+      console.error('Error adding tone:', error);
       toast({
         title: "Audio Error",
-        description: "Failed to start audio. Please try again.",
+        description: "Failed to add tone. Please try again.",
         variant: "destructive",
       });
     }
   }, [frequency, waveType, volume, initAudioContext]);
 
-  const stopTone = useCallback(() => {
-    if (oscillatorRef.current && gainNodeRef.current) {
-      const audioContext = audioContextRef.current;
-      if (audioContext) {
-        gainNodeRef.current.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.01);
+  const removeTone = useCallback((toneId: string) => {
+    setActiveTones(prev => {
+      const tone = prev.find(t => t.id === toneId);
+      if (tone) {
+        // Fade out and stop
+        tone.gainNode.gain.linearRampToValueAtTime(0, audioContextRef.current!.currentTime + 0.01);
         setTimeout(() => {
-          if (oscillatorRef.current) {
-            oscillatorRef.current.stop();
-            oscillatorRef.current = null;
-            gainNodeRef.current = null;
-          }
+          tone.oscillator.stop();
         }, 20);
       }
-    }
-    setIsPlaying(false);
-    
+      return prev.filter(t => t.id !== toneId);
+    });
+
     toast({
-      title: "Audio Stopped",
-      description: "Tone generation stopped",
+      title: "Tone Removed",
+      description: "Tone has been removed",
     });
   }, []);
 
-  const updateVolume = useCallback((newVolume: number[]) => {
-    if (gainNodeRef.current && audioContextRef.current) {
-      const gainValue = (newVolume[0] / 100) * 0.3; // Max gain of 0.3 for safety
-      gainNodeRef.current.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
-    }
+  const toggleTone = useCallback((toneId: string) => {
+    setActiveTones(prev => prev.map(tone => {
+      if (tone.id === toneId) {
+        const newEnabled = !tone.isEnabled;
+        const gainValue = newEnabled ? (tone.volume / 100) * 0.2 : 0;
+        tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current!.currentTime + 0.1);
+        return { ...tone, isEnabled: newEnabled };
+      }
+      return tone;
+    }));
   }, []);
 
-  const updateFrequency = useCallback((newFrequency: number) => {
-    if (oscillatorRef.current && audioContextRef.current) {
-      oscillatorRef.current.frequency.setValueAtTime(newFrequency, audioContextRef.current.currentTime);
-    }
+  const updateToneVolume = useCallback((toneId: string, newVolume: number) => {
+    setActiveTones(prev => prev.map(tone => {
+      if (tone.id === toneId) {
+        const gainValue = tone.isEnabled ? (newVolume / 100) * 0.2 : 0;
+        tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current!.currentTime + 0.1);
+        return { ...tone, volume: newVolume };
+      }
+      return tone;
+    }));
   }, []);
+
+  const stopAllTones = useCallback(() => {
+    activeTones.forEach(tone => {
+      tone.gainNode.gain.linearRampToValueAtTime(0, audioContextRef.current!.currentTime + 0.01);
+      setTimeout(() => {
+        tone.oscillator.stop();
+      }, 20);
+    });
+    setActiveTones([]);
+
+    toast({
+      title: "All Tones Stopped",
+      description: "All active tones have been stopped",
+    });
+  }, [activeTones]);
 
   const handleFrequencyChange = (value: string) => {
     const numValue = parseFloat(value);
     if (!isNaN(numValue) && numValue > 0 && numValue <= 20000) {
       setFrequency(numValue);
-      updateFrequency(numValue);
     }
   };
 
   const handleNoteClick = (note: Note) => {
     const noteFrequency = note.frequency * Math.pow(2, selectedOctave - 4);
     setFrequency(Math.round(noteFrequency * 100) / 100);
-    updateFrequency(noteFrequency);
-  };
-
-  const handleWaveTypeChange = (newWaveType: WaveType) => {
-    setWaveType(newWaveType);
-    if (oscillatorRef.current) {
-      // Need to restart the oscillator to change wave type
-      if (isPlaying) {
-        stopTone();
-        setTimeout(() => startTone(), 50);
-      }
-    }
   };
 
   useEffect(() => {
     return () => {
-      if (oscillatorRef.current) {
-        oscillatorRef.current.stop();
-      }
+      activeTones.forEach(tone => {
+        tone.oscillator.stop();
+      });
       if (audioContextRef.current) {
         audioContextRef.current.close();
       }
@@ -164,29 +187,29 @@ export const AudioGenerator = () => {
   }, []);
 
   useEffect(() => {
-    if (isPlaying && oscillatorRef.current) {
-      // Restart with new wave type
-      stopTone();
-      setTimeout(() => startTone(), 50);
-    }
-  }, [waveType]);
+    return () => {
+      activeTones.forEach(tone => {
+        tone.oscillator.stop();
+      });
+    };
+  }, [activeTones]);
 
   return (
     <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold bg-gradient-active bg-clip-text text-transparent">
-            Audio Frequency Generator
+            Multi-Tone Audio Generator
           </h1>
           <p className="text-muted-foreground">
-            Professional-grade tone generator with multiple waveforms
+            Professional synthesizer with multiple simultaneous tones
           </p>
         </div>
 
-        {/* Main Control Panel */}
+        {/* Tone Creation Panel */}
         <Card className="bg-gradient-panel border-border/50 shadow-panel p-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Waveform Selection */}
             <div className="space-y-4">
@@ -200,7 +223,7 @@ export const AudioGenerator = () => {
                   <Button
                     key={type}
                     variant={waveType === type ? "default" : "secondary"}
-                    onClick={() => handleWaveTypeChange(type)}
+                    onClick={() => setWaveType(type)}
                     className={`h-28 flex flex-col items-center justify-center gap-2 bg-gradient-control hover:bg-gradient-active transition-all duration-300 ${
                       waveType === type ? 'shadow-glow border-primary' : 'border-border/30'
                     }`}
@@ -215,7 +238,7 @@ export const AudioGenerator = () => {
             {/* Frequency Control */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-foreground">
-                Frequency Control
+                Frequency & Volume
               </h3>
               
               <div className="space-y-3">
@@ -232,33 +255,8 @@ export const AudioGenerator = () => {
                   <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Hz</span>
                 </div>
 
-                {/* Play/Stop Controls */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={isPlaying ? stopTone : startTone}
-                    size="lg"
-                    className={`flex-1 transition-all duration-300 ${
-                      isPlaying 
-                        ? 'bg-destructive hover:bg-destructive/90 shadow-glow' 
-                        : 'bg-gradient-active hover:opacity-90 shadow-control'
-                    }`}
-                  >
-                    {isPlaying ? (
-                      <>
-                        <Square className="h-5 w-5 mr-2" />
-                        Stop
-                      </>
-                    ) : (
-                      <>
-                        <Play className="h-5 w-5 mr-2" />
-                        Play
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                {/* Volume Control */}
-                <div className="space-y-3">
+                {/* Volume Control for new tones */}
+                <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     {volume[0] === 0 ? (
                       <VolumeX className="h-4 w-4 text-muted-foreground" />
@@ -271,19 +269,140 @@ export const AudioGenerator = () => {
                   
                   <Slider
                     value={volume}
-                    onValueChange={(newValue) => {
-                      setVolume(newValue);
-                      updateVolume(newValue);
-                    }}
+                    onValueChange={setVolume}
                     max={100}
                     step={1}
                     className="w-full"
                   />
                 </div>
+
+                {/* Add Tone Button */}
+                <Button
+                  onClick={addTone}
+                  size="lg"
+                  className="w-full bg-gradient-active hover:opacity-90 shadow-control transition-all duration-300"
+                >
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Tone
+                </Button>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-foreground">
+                Quick Actions
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Active Tones:</span>
+                  <Badge variant="secondary" className="bg-audio-control">
+                    {activeTones.length}
+                  </Badge>
+                </div>
+
+                <Button
+                  onClick={stopAllTones}
+                  variant="destructive"
+                  size="lg"
+                  className="w-full"
+                  disabled={activeTones.length === 0}
+                >
+                  <Square className="h-5 w-5 mr-2" />
+                  Stop All Tones
+                </Button>
+
+                <div className="text-xs text-muted-foreground text-center">
+                  Current: {frequency}Hz {waveType} @ {volume[0]}%
+                </div>
               </div>
             </div>
           </div>
         </Card>
+
+        {/* Active Tones Panel */}
+        {activeTones.length > 0 && (
+          <Card className="bg-gradient-panel border-border/50 shadow-panel p-8">
+            <div className="space-y-6">
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Play className="h-5 w-5 text-neon-green" />
+                Active Tones ({activeTones.length})
+              </h3>
+              
+              <div className="grid gap-4">
+                {activeTones.map((tone) => (
+                  <div
+                    key={tone.id}
+                    className={`flex items-center gap-4 p-4 rounded-lg bg-audio-control border transition-all duration-300 ${
+                      tone.isEnabled ? 'border-primary/30 shadow-control' : 'border-border/30 opacity-60'
+                    }`}
+                  >
+                    {/* Waveform Preview */}
+                    <div className="flex-shrink-0">
+                      <WaveformPreview waveType={tone.waveType} size={40} isActive={tone.isEnabled} />
+                    </div>
+
+                    {/* Tone Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-sm font-medium text-foreground">
+                          {tone.frequency}Hz
+                        </span>
+                        <Badge variant="outline" className="text-xs capitalize">
+                          {tone.waveType}
+                        </Badge>
+                        <span className={`text-xs ${tone.isEnabled ? 'text-neon-green' : 'text-muted-foreground'}`}>
+                          {tone.isEnabled ? 'Playing' : 'Muted'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Volume Control */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <Volume2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <Slider
+                        value={[tone.volume]}
+                        onValueChange={(value) => updateToneVolume(tone.id, value[0])}
+                        max={100}
+                        step={1}
+                        className="flex-1"
+                      />
+                      <span className="text-xs font-mono text-muted-foreground w-8 text-right">
+                        {tone.volume}%
+                      </span>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => toggleTone(tone.id)}
+                        className="h-8 w-8 p-0"
+                      >
+                        {tone.isEnabled ? (
+                          <Eye className="h-4 w-4 text-neon-green" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeTone(tone.id)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Musical Notes Panel */}
         <Card className="bg-gradient-panel border-border/50 shadow-panel p-8">
@@ -330,26 +449,6 @@ export const AudioGenerator = () => {
                 </Button>
               ))}
             </div>
-          </div>
-        </Card>
-
-        {/* Current Settings Display */}
-        <Card className="bg-gradient-panel border-border/50 shadow-panel p-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Current Settings</p>
-              <p className="font-mono text-lg">
-                <span className="text-primary">{frequency}Hz</span> • {" "}
-                <span className="text-accent capitalize">{waveType}</span> • {" "}
-                <span className={`${isPlaying ? 'text-neon-green' : 'text-muted-foreground'}`}>
-                  {isPlaying ? 'Playing' : 'Stopped'}
-                </span>
-              </p>
-            </div>
-            
-            {isPlaying && (
-              <div className="h-3 w-3 bg-neon-green rounded-full animate-pulse shadow-glow"></div>
-            )}
           </div>
         </Card>
       </div>
