@@ -64,7 +64,11 @@ export const AudioGenerator = () => {
 
   const addTone = useCallback(() => {
     try {
+      console.log('Adding tone with settings:', { frequency, waveType, volume: volume[0] });
+      
       const audioContext = initAudioContext();
+      console.log('Audio context state:', audioContext.state);
+      
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
 
@@ -72,11 +76,15 @@ export const AudioGenerator = () => {
       oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
       
       const gainValue = (volume[0] / 100) * 0.2; // Lower max gain for multiple tones
+      console.log('Setting gain value:', gainValue);
+      
       gainNode.gain.setValueAtTime(0, audioContext.currentTime);
       gainNode.gain.linearRampToValueAtTime(gainValue, audioContext.currentTime + 0.01);
 
       oscillator.connect(gainNode);
       gainNode.connect(audioContext.destination);
+      
+      console.log('Starting oscillator...');
       oscillator.start();
 
       const newTone: ActiveTone = {
@@ -90,7 +98,12 @@ export const AudioGenerator = () => {
         createdAt: new Date(),
       };
 
-      setActiveTones(prev => [...prev, newTone]);
+      console.log('Created new tone:', newTone.id);
+      setActiveTones(prev => {
+        const updated = [...prev, newTone];
+        console.log('Updated active tones count:', updated.length);
+        return updated;
+      });
 
       toast({
         title: "Tone Added",
