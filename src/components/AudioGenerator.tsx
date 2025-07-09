@@ -129,8 +129,14 @@ export const AudioGenerator = () => {
     setActiveTones(prev => prev.map(tone => {
       if (tone.id === toneId) {
         const newEnabled = !tone.isEnabled;
-        const gainValue = newEnabled ? (tone.volume / 100) * 0.2 : 0;
-        tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current!.currentTime + 0.1);
+        if (audioContextRef.current && tone.gainNode) {
+          const gainValue = newEnabled ? (tone.volume / 100) * 0.2 : 0;
+          try {
+            tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+          } catch (error) {
+            console.error('Error toggling tone:', error);
+          }
+        }
         return { ...tone, isEnabled: newEnabled };
       }
       return tone;
@@ -140,8 +146,14 @@ export const AudioGenerator = () => {
   const updateToneVolume = useCallback((toneId: string, newVolume: number) => {
     setActiveTones(prev => prev.map(tone => {
       if (tone.id === toneId) {
-        const gainValue = tone.isEnabled ? (newVolume / 100) * 0.2 : 0;
-        tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current!.currentTime + 0.1);
+        if (audioContextRef.current && tone.gainNode) {
+          const gainValue = tone.isEnabled ? (newVolume / 100) * 0.2 : 0;
+          try {
+            tone.gainNode.gain.linearRampToValueAtTime(gainValue, audioContextRef.current.currentTime + 0.1);
+          } catch (error) {
+            console.error('Error updating tone volume:', error);
+          }
+        }
         return { ...tone, volume: newVolume };
       }
       return tone;
